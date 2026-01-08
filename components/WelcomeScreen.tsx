@@ -15,7 +15,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
   const [error, setError] = useState<string | null>(null);
 
   const handleAdminAccess = () => {
-      // Bypass Auth using Service Key privileges setup in lib/supabase
+      // Bypass Auth using Service Key privileges
       const adminSession = {
           user: {
               id: 'service_admin',
@@ -33,9 +33,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
     setIsLoading(true);
     setError(null);
 
+    // Auto-complete email if only username is provided
+    let loginEmail = email.trim();
+    if (!loginEmail.includes('@')) {
+        loginEmail = `${loginEmail}@mpsp.mp.br`;
+    }
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: loginEmail,
         password,
       });
 
@@ -52,13 +58,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
       const errorMessage = err.message || "Erro desconhecido";
       
       if (errorMessage === "Invalid login credentials") {
-        setError("Credenciais inválidas. Tente novamente ou use o Modo Offline.");
+        setError("Usuário ou senha incorretos.");
+      } else if (errorMessage.includes("Invalid authentication credentials")) {
+        setError("Erro de Configuração (API Key Inválida). Contate o administrador ou use o Modo Offline.");
       } else if (errorMessage.includes("Email logins are disabled")) {
           setError("Login por e-mail desativado. Use 'Entrar como Convidado' ou 'Modo Offline'.");
-      } else if (errorMessage.includes("Database error querying schema") || errorMessage.includes("Database error") || errorMessage.includes("FetchError")) {
-          setError("Erro de Conexão com Banco de Dados. Utilize o Modo Offline.");
+      } else if (errorMessage.includes("Database error") || errorMessage.includes("FetchError") || errorMessage.includes("Failed to fetch")) {
+          setError("Erro de Conexão. O servidor pode estar indisponível. Utilize o Modo Offline.");
       } else {
-          setError(`Falha na autenticação: ${errorMessage}`);
+          setError(`Erro: ${errorMessage.slice(0, 60)}...`);
       }
     } finally {
       setIsLoading(false);
@@ -115,7 +123,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-8">Painel do Oficial de Promotoria</p>
             
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-bold w-full break-words">
+              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-bold w-full break-words animate-in slide-in-from-top">
                 {error}
               </div>
             )}
