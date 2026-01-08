@@ -1,15 +1,16 @@
 
 import React from 'react';
-import { ChevronLeft, User, LayoutDashboard } from 'lucide-react';
+import { ChevronLeft, User, LayoutDashboard, LogOut } from 'lucide-react';
 import Logo from './Logo';
 
 interface HeaderProps {
   userName: string;
   showBackButton?: boolean;
   onBack?: () => void;
+  onLogout?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userName, showBackButton, onBack }) => {
+const Header: React.FC<HeaderProps> = ({ userName, showBackButton, onBack, onLogout }) => {
   return (
     <header className="bg-white text-slate-900 h-16 flex items-center justify-between px-8 shadow-sm shrink-0 z-20 border-b border-slate-200">
       <div className="flex items-center gap-6">
@@ -39,16 +40,31 @@ const Header: React.FC<HeaderProps> = ({ userName, showBackButton, onBack }) => 
         </div>
       </div>
       
-      <div className="flex items-center gap-4 group cursor-pointer">
-        <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">{userName || 'Usuário'}</p>
-            <p className="text-[10px] text-red-600 font-bold tracking-widest uppercase">Oficial de Promotoria</p>
-        </div>
-        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 shadow-sm group-hover:border-red-500/30 transition-all overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
-                <User size={20} />
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 group cursor-default">
+            <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">{userName || 'Usuário'}</p>
+                <p className="text-[10px] text-red-600 font-bold tracking-widest uppercase">Oficial de Promotoria</p>
+            </div>
+            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200 shadow-sm transition-all overflow-hidden">
+                <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 transition-colors">
+                    <User size={20} />
+                </div>
             </div>
         </div>
+
+        {onLogout && (
+            <>
+                <div className="h-8 w-px bg-slate-200 mx-2"></div>
+                <button 
+                    onClick={onLogout}
+                    className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm"
+                    title="Sair do Sistema"
+                >
+                    <LogOut size={18} />
+                </button>
+            </>
+        )}
       </div>
     </header>
   );

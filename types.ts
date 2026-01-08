@@ -1,7 +1,7 @@
 
-
 export interface Person {
   id: string;
+  case_id?: string; // Foreign key
   nome: string;
   folha: string;
   nacionalidade: string;
@@ -9,14 +9,41 @@ export interface Person {
   rg: string;
   pai: string;
   mae: string;
-  dataNascimento: string;
+  dataNascimento: string; // Mapped from data_nascimento
+  // Internal mapping for UI consistency if needed, or we adapt UI to use snake_case
+}
+
+// Helper to map DB snake_case to UI camelCase
+export interface DbPerson {
+  id: string;
+  case_id: string;
+  nome: string;
+  folha: string;
+  nacionalidade: string;
+  cpf: string;
+  rg: string;
+  pai: string;
+  mae: string;
+  data_nascimento: string;
+  endereco?: string;
+  contato?: string;
 }
 
 export interface CaseData {
-  numeroProcesso: string;
-  cargo: string;
-  promotor: string;
-  dataAudiencia: string;
+  id?: string;
+  numeroProcesso: string; // Mapped to numero_processo
+  cargo: string; // Mapped to cargo_promotoria
+  promotor: string; // Mapped to promotor_responsavel
+  dataAudiencia: string; // Mapped to data_audiencia
+}
+
+export interface DbCase {
+  id: string;
+  numero_processo: string;
+  cargo_promotoria: string;
+  promotor_responsavel: string;
+  data_audiencia: string;
+  created_by?: string;
 }
 
 export type Gender = 'M' | 'F';
@@ -50,13 +77,29 @@ export type ActivityStatus = typeof ACTIVITY_STATUSES[number]['value'];
 
 export interface Activity {
   id: string;
-  numeroProcesso: string;
+  numeroProcesso: string; // Mapped from numero_processo_ref
   data: string; // YYYY-MM-DD
   status: ActivityStatus;
   tipo: string;
-  cargo: string;
-  promotor: string;
+  cargo: string; // Mapped from cargo_ref
+  promotor: string; // Mapped from promotor_ref
   observacao?: string;
+  user_id?: string;
+}
+
+// DB Interface for Activities
+export interface DbActivity {
+  id: string;
+  user_id: string;
+  case_id?: string;
+  numero_processo_ref: string;
+  tipo: string;
+  data_atividade: string;
+  status: string;
+  observacao: string;
+  cargo_ref: string;
+  promotor_ref: string;
+  created_at?: string;
 }
 
 export const ACTIVITY_TYPES = [

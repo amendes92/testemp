@@ -3,7 +3,11 @@ import React, { useState } from 'react';
 import { BrainCircuit, Upload, Send, FileText, Loader2, Sparkles, Copy, CheckCircle, AlertCircle, X, RefreshCw, FileSignature } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
-const MentorTool: React.FC = () => {
+interface MentorToolProps {
+  userId: string;
+}
+
+const MentorTool: React.FC<MentorToolProps> = ({ userId }) => {
   const [prompt, setPrompt] = useState('');
   const [file, setFile] = useState<File | null>(null);
   
