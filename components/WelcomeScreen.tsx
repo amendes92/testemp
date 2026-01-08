@@ -47,19 +47,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
         onConfirm(data.session);
       }
     } catch (err: any) {
-      console.error("Login failed:", err.message || err);
+      console.error("Login failed:", err);
       
-      const errorMessage = err.message || JSON.stringify(err);
+      const errorMessage = err.message || "Erro desconhecido";
       
       if (errorMessage === "Invalid login credentials") {
         setError("Credenciais inválidas. Tente novamente ou use o Modo Offline.");
       } else if (errorMessage.includes("Email logins are disabled")) {
           setError("Login por e-mail desativado. Use 'Entrar como Convidado' ou 'Modo Offline'.");
-      } else if (errorMessage.includes("Database error querying schema") || errorMessage.includes("Database error")) {
-          // Auto-fallback suggestion for DB schema errors which are server-side config issues
-          setError("Erro Crítico no Banco de Dados (Schema). Recomendado: Acesso Administrativo ou Offline.");
+      } else if (errorMessage.includes("Database error querying schema") || errorMessage.includes("Database error") || errorMessage.includes("FetchError")) {
+          setError("Erro de Conexão com Banco de Dados. Utilize o Modo Offline.");
       } else {
-          setError(`Falha na autenticação: ${errorMessage.slice(0, 100)}`);
+          setError(`Falha na autenticação: ${errorMessage}`);
       }
     } finally {
       setIsLoading(false);
@@ -75,12 +74,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
         if (data.session) onConfirm(data.session);
     } catch (err: any) {
         console.error("Anon Login failed:", err);
-        if (err.message && err.message.includes("Anonymous sign-ins are disabled")) {
+        const errorMessage = err.message || "Erro desconhecido";
+        
+        if (errorMessage.includes("Anonymous sign-ins are disabled")) {
              setError("Login anônimo desativado no servidor. Utilize o Modo Offline.");
-        } else if (err.message && err.message.includes('not a function')) {
+        } else if (errorMessage.includes('not a function')) {
              setError("Erro de versão do cliente. Tente o Modo Offline.");
         } else {
-             setError("Falha no login anônimo. Tente o Modo Offline.");
+             setError(`Falha no login anônimo: ${errorMessage}`);
         }
     } finally {
         setIsLoading(false);

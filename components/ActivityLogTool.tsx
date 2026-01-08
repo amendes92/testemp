@@ -125,7 +125,7 @@ const ActivityLogTool: React.FC<ActivityLogToolProps> = ({ onOpenActivity, userI
             promotor: promotorNamePreview || 'Não identificado',
             observacao: formData.observacao || ''
         };
-        setActivities(prev => [mockActivity, ...prev]);
+        setActivities(prev => editingId ? prev.map(a => a.id === editingId ? mockActivity : a) : [mockActivity, ...prev]);
         handleResetForm();
         if (dbError) alert("Salvo localmente (Banco de dados indisponível).");
         return;
@@ -159,8 +159,9 @@ const ActivityLogTool: React.FC<ActivityLogToolProps> = ({ onOpenActivity, userI
       await fetchActivities();
       handleResetForm();
     } catch (error: any) {
-      console.error('Error saving activity:', JSON.stringify(error, null, 2));
-      alert('Erro ao salvar no banco. Tentando salvar localmente...');
+      console.error('Error saving activity:', error);
+      // JSON.stringify can fail or return empty on error objects, use error.message
+      alert(`Erro ao salvar no banco: ${error.message || 'Erro desconhecido'}. Tentando salvar localmente...`);
       setDbError(true);
       // Fallback local save
       const mockActivity: Activity = {
