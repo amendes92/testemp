@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ShieldCheck, ArrowRight, Loader2, UserRound, WifiOff, ShieldAlert, UserPlus } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Loader2, UserRound, UserPlus } from 'lucide-react';
 import Logo from './Logo';
 import { supabase } from '../lib/supabase';
 
@@ -15,34 +15,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleOfflineAccess = () => {
-      const offlineSession = {
-          user: {
-              id: 'offline',
-              email: 'offline@local',
-              role: 'offline_user'
-          }
-      };
-      onConfirm(offlineSession);
-  };
-
-  const handleAdminAccess = () => {
-      const adminSession = {
-          user: {
-              id: 'offline_admin',
-              email: 'admin@local',
-              role: 'service_role'
-          }
-      };
-      onConfirm(adminSession);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) return;
 
     if (password.length < 6) {
         setError("A senha deve ter no mínimo 6 caracteres.");
+        return;
+    }
+
+    if (!navigator.onLine) {
+        setError("Sem conexão com a internet.");
         return;
     }
 
@@ -85,38 +68,39 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
       }
     } catch (err: any) {
       const errorMessage = err.message || "Erro desconhecido";
-      console.error("Auth attempt failed:", errorMessage);
       
-      // Check for specific API configuration errors
-      if (errorMessage.includes("Invalid authentication credentials") || 
-          errorMessage.includes("FetchError") || 
-          errorMessage.includes("Failed to fetch")) {
-        // Immediate fallback for configuration errors
-        console.warn("API/Auth configuration error detected. Switching to Offline Mode.");
-        handleOfflineAccess();
-        return;
-      }
-      
-      if (errorMessage === "Invalid login credentials" || errorMessage.includes("invalid_grant")) {
-        setError("Usuário ou senha incorretos.");
-        setIsLoading(false);
-      } else if (errorMessage.includes("Password should be at least 6 characters")) {
-          setError("A senha deve ter no mínimo 6 caracteres.");
-          setIsLoading(false);
-      } else if (errorMessage.includes("Email logins are disabled")) {
-          setError("Login por e-mail desativado.");
-          setIsLoading(false);
-      } else if (errorMessage.includes("User already registered")) {
-          setError("Usuário já cadastrado.");
-          setIsLoading(false);
+      const isNetworkError = errorMessage.includes("FetchError") || 
+                             errorMessage.includes("Failed to fetch") || 
+                             errorMessage.includes("NetworkError");
+
+      if (isNetworkError) {
+          console.warn("Erro de conexão durante autenticação:", errorMessage);
+          setError("Falha na conexão com o servidor. Verifique se o servidor está acessível.");
       } else {
-          setError(`Erro: ${errorMessage.slice(0, 100)}`);
-          setIsLoading(false);
+          console.error("Auth attempt failed:", errorMessage);
+          
+          if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("invalid_grant")) {
+            setError("Usuário ou senha incorretos.");
+          } else if (errorMessage.includes("Password should be at least 6 characters")) {
+              setError("A senha deve ter no mínimo 6 caracteres.");
+          } else if (errorMessage.includes("Email logins are disabled")) {
+              setError("Login por e-mail desativado.");
+          } else if (errorMessage.includes("User already registered")) {
+              setError("Usuário já cadastrado.");
+          } else {
+              setError(`Erro: ${errorMessage.slice(0, 100)}`);
+          }
       }
+      setIsLoading(false);
     }
   };
 
   const handleAnonymousLogin = async () => {
+    if (!navigator.onLine) {
+        setError("Sem conexão com a internet.");
+        return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -124,9 +108,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
         if (error) throw error;
         if (data.session) onConfirm(data.session);
     } catch (err: any) {
-        console.error("Anon Login failed:", err);
-        // Fallback to offline if anonymous login fails (e.g. invalid API key)
-        handleOfflineAccess();
+        const errorMessage = err.message || "";
+        const isNetworkError = errorMessage.includes("FetchError") || errorMessage.includes("Failed to fetch");
+        
+        if (isNetworkError) {
+            console.warn("Erro de conexão (Anon):", errorMessage);
+            setError("Erro de conexão. O servidor pode estar indisponível.");
+        } else {
+            console.error("Anon Login failed:", err);
+            setError("Erro ao entrar como convidado.");
+        }
+        setIsLoading(false);
     }
   };
 
@@ -220,17 +212,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
                 </div>
 
                 <div className="space-y-3 w-full">
-                    <button
-                        type="button"
-                        onClick={handleAdminAccess}
-                        disabled={isLoading}
-                        className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all"
-                    >
-                        <ShieldAlert size={16} />
-                        Acesso Offline (Admin)
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <button
                           type="button"
                           onClick={handleAnonymousLogin}
@@ -238,17 +220,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConfirm }) => {
                           className="w-full bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-600 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all"
                       >
                           {isLoading ? <Loader2 className="animate-spin" size={16} /> : <UserRound size={16} />}
-                          Convidado
-                      </button>
-
-                      <button
-                          type="button"
-                          onClick={handleOfflineAccess}
-                          disabled={isLoading}
-                          className="w-full bg-green-50 hover:bg-green-100 border border-green-200 text-green-700 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all"
-                      >
-                          <WifiOff size={16} />
-                          Modo Offline
+                          Entrar como Convidado
                       </button>
                     </div>
                 </div>

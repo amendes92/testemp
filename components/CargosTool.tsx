@@ -2,9 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { DbCargoAcumulacao, DbMasterPromotor, PROMOTORIAS } from '../types';
-import { Loader2, Plus, Trash2, Save, User, Briefcase, Calendar, Users, X, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, User, Briefcase, Calendar, Users, X, AlertCircle, WifiOff } from 'lucide-react';
 
-const CargosTool: React.FC = () => {
+interface CargosToolProps {
+  userId?: string;
+}
+
+const CargosTool: React.FC<CargosToolProps> = ({ userId }) => {
   const [cargos, setCargos] = useState<DbCargoAcumulacao[]>([]);
   const [promotores, setPromotores] = useState<DbMasterPromotor[]>([]);
   const [loading, setLoading] = useState(false);
@@ -21,6 +25,8 @@ const CargosTool: React.FC = () => {
   });
 
   const fetchPromotores = async () => {
+    if (userId === 'offline') return;
+    
     setLoadingPromotores(true);
     try {
       const { data, error } = await supabase.from('master_promotores').select('*').order('nome');
@@ -35,6 +41,8 @@ const CargosTool: React.FC = () => {
   };
 
   const fetchCargos = async () => {
+    if (userId === 'offline') return;
+
     setLoading(true);
     setError(null);
     try {
@@ -63,10 +71,16 @@ const CargosTool: React.FC = () => {
   useEffect(() => {
     fetchCargos();
     fetchPromotores();
-  }, []);
+  }, [userId]);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este registro?")) return;
+    
+    if (userId === 'offline') {
+        setCargos(prev => prev.filter(c => c.id !== id));
+        return;
+    }
+
     try {
       const { error } = await supabase.from('tb_cargos_acumulacoes').delete().eq('id', id);
       if (error) throw error;
@@ -79,6 +93,30 @@ const CargosTool: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.cargo_nome) return;
+
+    // Offline Mock Save
+    if (userId === 'offline') {
+         const mock: any = {
+            id: Date.now(),
+            cargo_nome: formData.cargo_nome!,
+            eh_acumulacao: formData.eh_acumulacao,
+            data_inicio: formData.data_inicio,
+            data_fim: formData.data_fim,
+            promotor_titular_id: formData.promotor_titular_id,
+            promotor_designado_id: formData.promotor_designado_id,
+            promotor_titular: { nome: 'Offline Promotor' },
+            promotor_designado: { nome: 'Offline Promotor' }
+         };
+         setCargos(prev => [...prev, mock]);
+         setIsFormOpen(false);
+         setFormData({
+            cargo_nome: '',
+            eh_acumulacao: false,
+            data_inicio: new Date().toISOString().split('T')[0],
+            data_fim: ''
+          });
+         return;
+    }
 
     try {
       const payload = {
@@ -163,8 +201,9 @@ const CargosTool: React.FC = () => {
                         value={formData.promotor_titular_id || ''} 
                         onChange={handleChange}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs outline-none focus:ring-2 focus:ring-slate-400"
+                        disabled={userId === 'offline'}
                     >
-                        <option value="">Selecione...</option>
+                        <option value="">{userId === 'offline' ? 'Indisponível (Offline)' : 'Selecione...'}</option>
                         {promotores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                     </select>
                  </div>
@@ -176,8 +215,9 @@ const CargosTool: React.FC = () => {
                         value={formData.promotor_designado_id || ''} 
                         onChange={handleChange}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs outline-none focus:ring-2 focus:ring-slate-400"
+                        disabled={userId === 'offline'}
                     >
-                        <option value="">Selecione...</option>
+                        <option value="">{userId === 'offline' ? 'Indisponível (Offline)' : 'Selecione...'}</option>
                         {promotores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                     </select>
                  </div>
@@ -220,6 +260,13 @@ const CargosTool: React.FC = () => {
                  <Users size={24} className="text-slate-400" />
                  Registros Ativos
              </h3>
+
+             {userId === 'offline' && (
+               <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-amber-700 text-xs font-bold">
+                   <WifiOff size={16} />
+                   <span>Modo Offline: Registros apenas locais.</span>
+               </div>
+             )}
 
              {loading ? (
                  <div className="flex justify-center p-12"><Loader2 size={32} className="animate-spin text-slate-400" /></div>

@@ -14,6 +14,7 @@ import ArchivingPromotionTool from './components/ArchivingPromotionTool';
 import ActivityLogTool from './components/ActivityLogTool';
 import MentorTool from './components/MentorTool';
 import CargosTool from './components/CargosTool';
+import TestDbTool from './components/TestDbTool';
 import { Person, CaseData, AppScreen, Activity, DbCaseParticipant } from './types';
 import { supabase } from './lib/supabase';
 
@@ -230,7 +231,8 @@ const App: React.FC = () => {
       case 'PROMOCAO_ARQUIVAMENTO': return <ArchivingPromotionTool />;
       case 'ACTIVITIES': return <ActivityLogTool onOpenActivity={handleOpenActivity} userId={session.user.id} />;
       case 'MENTOR': return <MentorTool userId={session.user.id} />;
-      case 'CARGOS': return <CargosTool />;
+      case 'CARGOS': return <CargosTool userId={session.user.id} />;
+      case 'TEST_DB': return <TestDbTool />;
 
       default:
         return (

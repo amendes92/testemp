@@ -48,15 +48,15 @@ const ActivityLogTool: React.FC<ActivityLogToolProps> = ({ onOpenActivity, userI
 
       if (error) throw error;
 
-      const mappedActivities: Activity[] = (data as DbActivity[]).map(d => ({
+      const mappedActivities: Activity[] = (data as unknown as DbActivity[]).map(d => ({
         id: d.id,
         user_id: d.user_id,
-        numeroProcesso: d.numero_processo_ref,
-        data: d.data_atividade,
-        status: d.status as ActivityStatus,
-        tipo: d.tipo,
-        cargo: d.cargo_ref,
-        promotor: d.promotor_ref,
+        numeroProcesso: d.numero_processo_ref || '',
+        data: d.data_atividade || '',
+        status: (d.status as ActivityStatus) || 'NAO_VERIFICADO',
+        tipo: d.tipo || 'Outros',
+        cargo: d.cargo_ref || '',
+        promotor: d.promotor_ref || '',
         observacao: d.observacao
       }));
 

@@ -77,7 +77,7 @@ export interface DbCargoAcumulacao {
 
 export type Gender = 'M' | 'F';
 
-export type AppScreen = 'DASHBOARD' | 'PESQUISA_NI' | 'SISDIGITAL' | 'OFICIO' | 'ANPP' | 'MULTA_PENAL' | 'PROMOCAO_ARQUIVAMENTO' | 'ACTIVITIES' | 'MENTOR' | 'CARGOS';
+export type AppScreen = 'DASHBOARD' | 'PESQUISA_NI' | 'SISDIGITAL' | 'OFICIO' | 'ANPP' | 'MULTA_PENAL' | 'PROMOCAO_ARQUIVAMENTO' | 'ACTIVITIES' | 'MENTOR' | 'CARGOS' | 'TEST_DB';
 
 interface Schedule {
   name: string;

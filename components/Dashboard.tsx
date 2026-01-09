@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, FileText, Mail, FileCheck, ArrowRight, Gavel, Archive, ListTodo, BrainCircuit, Users } from 'lucide-react';
+import { Search, FileText, Mail, FileCheck, ArrowRight, Gavel, Archive, ListTodo, BrainCircuit, Users, Database } from 'lucide-react';
 import { AppScreen } from '../types';
 
 interface DashboardProps {
@@ -80,6 +80,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectScreen }) => {
       icon: <Users className="text-slate-800" size={32} />,
       color: 'bg-slate-200',
       borderColor: 'border-slate-300'
+    },
+    {
+      id: 'TEST_DB' as AppScreen,
+      title: 'Teste de Banco',
+      description: 'Diagnóstico de conexão e visualização de tabelas.',
+      icon: <Database className="text-blue-800" size={32} />,
+      color: 'bg-blue-100',
+      borderColor: 'border-blue-300'
     }
   ];
 
