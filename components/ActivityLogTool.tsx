@@ -61,8 +61,8 @@ const ActivityLogTool: React.FC<ActivityLogToolProps> = ({ onOpenActivity, userI
       }));
 
       setActivities(mappedActivities);
-    } catch (error) {
-      console.error('Error fetching activities:', error);
+    } catch (error: any) {
+      console.error('Error fetching activities:', error.message || error);
       setDbError(true);
       // Fallback to empty, don't alert to avoid blocking user flow on load
     } finally {

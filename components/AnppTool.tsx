@@ -23,9 +23,7 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
     contatosVitima: '',
     partes: Array(8).fill(null).map(() => ({ nome: '', endereco: '', contato: '' }))
   });
-  const [copied, setCopied] = useState(false);
 
-  // ... (useMemo for selectedPromotoria, promotorName, cargoNumero remains same) ...
   const selectedPromotoria = useMemo(() => PROMOTORIAS.find(p => p.label === formData.cargo), [formData.cargo]);
   const promotorName = useMemo(() => selectedPromotoria ? selectedPromotoria.schedule[0].name : "", [selectedPromotoria]);
   const cargoNumero = useMemo(() => { const match = formData.cargo.match(/\d+/); return match ? match[0] : ""; }, [formData.cargo]);
@@ -47,7 +45,14 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
 
     setIsSaving(true);
     try {
-        // 1. Check/Create Case
+        // 1. Get Cargo ID
+        let cargoId = null;
+        if (formData.cargo) {
+           const { data: cargo } = await supabase.from('master_cargos').select('id').eq('label', formData.cargo).single();
+           if (cargo) cargoId = cargo.id;
+        }
+
+        // 2. Check/Create Case
         let caseId: string;
         const { data: existingCase } = await supabase.from('cases').select('id').eq('numero_processo', formData.processo).single();
         if (existingCase) {
@@ -55,14 +60,14 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
         } else {
              const { data: newCase, error: createError } = await supabase.from('cases').insert([{
                     numero_processo: formData.processo,
-                    cargo_promotoria: formData.cargo,
+                    cargo_id: cargoId,
                     created_by: userId
              }]).select().single();
              if (createError) throw createError;
              caseId = newCase.id;
         }
 
-        // 2. Insert ANPP Request
+        // 3. Insert ANPP Request
         const { error } = await supabase.from('anpp_requests').insert([{
             case_id: caseId,
             user_id: userId,
@@ -75,9 +80,9 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
 
         if (error) throw error;
         alert("Solicitação salva no histórico!");
-    } catch (error) {
+    } catch (error: any) {
         console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar histórico.");
+        alert(`Erro ao salvar histórico: ${error.message}.`);
     } finally {
         setIsSaving(false);
     }
@@ -93,10 +98,8 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
   );
 
   const generatedContent = useMemo(() => (
-     /* ... content exactly as in original ... */
      <div id="printable-anpp" className="bg-white text-black p-0 printable-area" style={{ fontFamily: '"Arial", sans-serif', width: '100%', minHeight: '297mm', boxSizing: 'border-box' }}>
       
-      {/* Header oficial MPSP - Estilo Clean */}
       <div className="flex items-start justify-between border-b-[3px] border-black pb-4 mb-6">
         <div className="flex items-center gap-5">
            <Logo className="h-14" />
@@ -118,10 +121,8 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
         Solicitação de Acordo de Não Persecução Penal
       </h2>
 
-      {/* Tabela de Dados Principais */}
       <table className="w-full border-collapse border border-black text-[10pt] mb-6">
         <tbody>
-          {/* Linha 1 */}
           <tr>
             <td className="w-[15%] bg-gray-200 font-bold p-2 border border-black border-r-2 uppercase text-[8pt] align-middle">
               Nº dos Autos
@@ -139,8 +140,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
               </div>
             </td>
           </tr>
-
-          {/* Linha 2 */}
           <tr>
             <td className="bg-gray-200 font-bold p-2 border border-black border-r-2 uppercase text-[8pt] align-middle">
               Promotor(a)
@@ -149,8 +148,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
               {promotorName || '________________________________________________________________'}
             </td>
           </tr>
-
-          {/* Linha 3 */}
           <tr>
             <td className="bg-gray-200 font-bold p-2 border border-black border-r-2 uppercase text-[8pt] align-middle">
               Cargo
@@ -168,7 +165,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
         </tbody>
       </table>
 
-      {/* Seção de Partes / Imputados */}
       <div className="mb-6">
         <div className="bg-black text-white font-bold text-[9pt] uppercase px-2 py-1 mb-0 border-x border-t border-black flex justify-between">
            <span>Dados dos Imputados / Investigados</span>
@@ -208,7 +204,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
         </table>
       </div>
 
-      {/* Seção de Vítima e Observações */}
       <div className="grid grid-cols-1 gap-6 mb-6">
          
          <div className="border border-black">
@@ -231,7 +226,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
 
       </div>
 
-      {/* Rodapé - Tipo de Celebração */}
       <div className="border-2 border-black p-4 bg-gray-50 flex items-center justify-between">
          <div className="font-bold uppercase text-[9pt]">Forma de Celebração Sugerida:</div>
          <div className="flex gap-8">
@@ -253,7 +247,7 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
     </div>
   ), [formData, promotorName, cargoNumero, filledPartes]);
 
-  const handleReset = () => { if(confirm("Deseja resetar?")) { /* reset logic */ setStep(1); }};
+  const handleReset = () => { if(confirm("Deseja resetar?")) { setStep(1); }};
   const handlePrint = () => window.print();
 
   return (
@@ -282,7 +276,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
       `}</style>
       
       <div className="w-[420px] bg-white border-r border-slate-200 p-6 flex flex-col gap-4 shadow-xl z-10 overflow-y-auto custom-scrollbar no-print">
-         {/* ... (Sidebar form content from original, mapped to formData) ... */}
          <div className="flex items-center gap-3 mb-2"><div className="p-2 bg-green-600 rounded-lg text-white"><FileCheck size={20} /></div><div><h2 className="font-bold uppercase tracking-tight">ANPP - SAAf</h2></div></div>
          
          {step === 1 ? (
@@ -298,7 +291,6 @@ const AnppTool: React.FC<AnppToolProps> = ({ userId, caseData }) => {
              </div>
          ) : (
              <div className="space-y-4">
-                 {/* Imputados inputs */}
                  <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-slate-400">Imputados</span><button onClick={() => setStep(1)} className="text-[10px] font-bold text-slate-400"><ChevronLeft size={12}/> Voltar</button></div>
                  <div className="space-y-3">
                     {formData.partes.map((part, idx) => (

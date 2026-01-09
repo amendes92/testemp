@@ -19,7 +19,6 @@ const OficioTool: React.FC<OficioToolProps> = ({ userId, caseData }) => {
   const [template, setTemplate] = useState<OficioTemplate>('GERAL_DP');
   const [isSaving, setIsSaving] = useState(false);
   
-  // ... (Other states remain same) ...
   const [destinatarioNome, setDestinatarioNome] = useState('');
   const [orgaoNome, setOrgaoNome] = useState('');
   const [endereco, setEndereco] = useState('');
@@ -68,7 +67,6 @@ const OficioTool: React.FC<OficioToolProps> = ({ userId, caseData }) => {
   };
 
   const generatedContent = useMemo(() => {
-    /* ... Logic exactly as original ... */
     const header = `<div style="margin-bottom: 20px;"><p><b>Ofício nº ${numeroOficio || '____'}/${new Date().getFullYear().toString().slice(-2)} - 4ª PJCrim</b><br><b>Autos nº: ${processo || '________________'}</b></p></div><p style="text-align: right;">São Paulo, data infra.</p>`;
     const footer = `<div style="text-align: center; margin-top: 60px;"><b>${promotorName.toUpperCase() || '________________'}</b><br>${cargo || 'Promotor(a)'}</div><div style="font-size: 11px; margin-top: 40px; border-top: 1px solid #ccc;"><b>Ao: ${orgaoNome || '________________'}</b><br>${destinatarioNome}</div>`;
     
@@ -78,7 +76,7 @@ const OficioTool: React.FC<OficioToolProps> = ({ userId, caseData }) => {
     else body = `<p>Solicito informações sobre <b>${identificacaoObjeto || 'o caso'}</b>. ${textoLivre}</p>`;
     
     return `<div style="font-family: 'Times New Roman'; font-size: 14px; text-align: justify;">${header}${body}${footer}</div>`;
-  }, [numeroOficio, processo, promotorName, cargo, template, orgaoNome, destinatarioNome, endereco, emailOrgao, textoLivre, identificacaoObjeto, reuNome, iaBody]);
+  }, [numeroOficio, processo, promotorName, cargo, template, orgaoNome, destinatarioNome, textoLivre, identificacaoObjeto, iaBody]);
 
   const handleCopy = () => {
     const blobHtml = new Blob([generatedContent], { type: 'text/html' });
@@ -98,17 +96,24 @@ const OficioTool: React.FC<OficioToolProps> = ({ userId, caseData }) => {
 
       setIsSaving(true);
       try {
-          // 1. Check/Create Case
+          // 1. Get Cargo ID
+          let cargoId = null;
+          if (cargo) {
+             const { data: cargoData } = await supabase.from('master_cargos').select('id').eq('label', cargo).single();
+             if (cargoData) cargoId = cargoData.id;
+          }
+
+          // 2. Check/Create Case
           let caseId: string;
           const { data: existingCase } = await supabase.from('cases').select('id').eq('numero_processo', processo).single();
           if (existingCase) caseId = existingCase.id;
           else {
-              const { data: newCase, error } = await supabase.from('cases').insert([{ numero_processo: processo, cargo_promotoria: cargo, created_by: userId }]).select().single();
+              const { data: newCase, error } = await supabase.from('cases').insert([{ numero_processo: processo, cargo_id: cargoId, created_by: userId }]).select().single();
               if (error) throw error;
               caseId = newCase.id;
           }
 
-          // 2. Insert Oficio
+          // 3. Insert Oficio
           const { error } = await supabase.from('oficios').insert([{
               case_id: caseId,
               user_id: userId,
@@ -120,28 +125,24 @@ const OficioTool: React.FC<OficioToolProps> = ({ userId, caseData }) => {
           }]);
           if (error) throw error;
           alert("Ofício salvo!");
-      } catch (e) { console.error(e); alert("Erro ao salvar."); } finally { setIsSaving(false); }
+      } catch (e: any) { console.error(e); alert(`Erro ao salvar: ${e.message}`); } finally { setIsSaving(false); }
   };
 
   return (
     <div className="flex flex-1 overflow-hidden animate-in fade-in duration-500">
       <div className="w-[420px] bg-white border-r border-slate-200 p-6 flex flex-col gap-4 shadow-xl z-10 overflow-y-auto custom-scrollbar">
-         {/* ... Controls (Same as original but wired to state) ... */}
          <div className="flex items-center gap-3 mb-2"><div className="p-2 bg-red-600 rounded-lg text-white"><FileText size={20} /></div><h2 className="font-bold uppercase">Gerador de Ofícios</h2></div>
          <button onClick={() => setTemplate('GERACAO_IA')} className={`w-full py-3 rounded-xl border font-bold text-sm flex items-center justify-center gap-2 ${template === 'GERACAO_IA' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-700'}`}><Bot size={16}/> IA</button>
-         {/* ... Template buttons ... */}
          <input value={numeroOficio} onChange={e => setNumeroOficio(e.target.value)} placeholder="Nº Ofício" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" />
          <input value={processo} onChange={e => setProcesso(e.target.value)} placeholder="Processo" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" />
          <select value={cargo} onChange={e => setCargo(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"><option value="">Cargo...</option>{PROMOTORIAS.map(p => <option key={p.label} value={p.label}>{p.label}</option>)}</select>
          
-         {/* Destinatario */}
          <div className="p-4 bg-slate-900 rounded-2xl space-y-4">
             <span className="text-[10px] font-bold text-slate-500 uppercase">Destinatário</span>
             <input value={orgaoNome} onChange={e => setOrgaoNome(e.target.value)} placeholder="Órgão" className="w-full bg-slate-800 border-slate-700 rounded-lg p-2.5 text-xs text-white" />
             <input value={destinatarioNome} onChange={e => setDestinatarioNome(e.target.value)} placeholder="Nome" className="w-full bg-slate-800 border-slate-700 rounded-lg p-2.5 text-xs text-white" />
          </div>
 
-         {/* IA Inputs */}
          {template === 'GERACAO_IA' && (
              <div className="bg-violet-50 p-4 rounded-2xl space-y-3">
                  <input type="file" onChange={e => e.target.files && setIaFile(e.target.files[0])} className="text-xs" />

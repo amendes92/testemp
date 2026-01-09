@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, FileText, Mail, FileCheck, ArrowRight, Gavel, Archive, ListTodo, BrainCircuit } from 'lucide-react'; // Added BrainCircuit
+import { Search, FileText, Mail, FileCheck, ArrowRight, Gavel, Archive, ListTodo, BrainCircuit, Users } from 'lucide-react';
 import { AppScreen } from '../types';
 
 interface DashboardProps {
@@ -72,6 +72,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectScreen }) => {
       icon: <FileCheck className="text-green-500" size={32} />,
       color: 'bg-green-50',
       borderColor: 'border-green-200'
+    },
+    {
+      id: 'CARGOS' as AppScreen,
+      title: 'Cargos e Designações',
+      description: 'Gerencie titulares, designações e períodos de acumulação.',
+      icon: <Users className="text-slate-800" size={32} />,
+      color: 'bg-slate-200',
+      borderColor: 'border-slate-300'
     }
   ];
 

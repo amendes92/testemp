@@ -13,7 +13,8 @@ import MultaPenalTool from './components/MultaPenalTool';
 import ArchivingPromotionTool from './components/ArchivingPromotionTool';
 import ActivityLogTool from './components/ActivityLogTool';
 import MentorTool from './components/MentorTool';
-import { Person, CaseData, AppScreen, Activity, DbPerson } from './types';
+import CargosTool from './components/CargosTool';
+import { Person, CaseData, AppScreen, Activity, DbCaseParticipant } from './types';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
@@ -30,6 +31,8 @@ const App: React.FC = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setSession(session);
+    }).catch(err => {
+        console.warn("Supabase session check failed, defaulting to logged out", err);
     });
 
     const {
@@ -60,27 +63,45 @@ const App: React.FC = () => {
             return;
         }
 
-        // 2. Fetch people for this case
-        const { data: peopleData, error: peopleError } = await supabase
-          .from('people')
-          .select('*')
+        // 2. Fetch people for this case via case_participants -> global_people
+        const { data: participantsData, error: peopleError } = await supabase
+          .from('case_participants')
+          .select(`
+            id,
+            case_id,
+            person_id,
+            role,
+            is_preso,
+            person:global_people (
+              id,
+              nome,
+              cpf,
+              rg,
+              nome_mae,
+              data_nascimento
+            )
+          `)
           .eq('case_id', cases.id);
 
         if (peopleError) throw peopleError;
 
-        // Map snake_case to camelCase
-        const mappedPeople: Person[] = (peopleData as DbPerson[]).map(p => ({
-          id: p.id,
-          case_id: p.case_id,
-          nome: p.nome,
-          folha: p.folha,
-          nacionalidade: p.nacionalidade,
-          cpf: p.cpf,
-          rg: p.rg,
-          pai: p.pai,
-          mae: p.mae,
-          dataNascimento: p.data_nascimento
-        }));
+        // Map join result to Person interface
+        const mappedPeople: Person[] = (participantsData as any[]).map(p => {
+            const personDetails = p.person || {};
+            return {
+                id: p.id, // Using case_participant id for deletion
+                case_id: p.case_id,
+                person_id: p.person_id,
+                nome: personDetails.nome || 'Desconhecido',
+                folha: '', // Schema does not have folha currently
+                nacionalidade: 'Brasileiro', // Default as it's not in schema
+                cpf: personDetails.cpf || '',
+                rg: personDetails.rg || '',
+                pai: '', // Not in schema
+                mae: personDetails.nome_mae || '',
+                dataNascimento: personDetails.data_nascimento || ''
+            };
+        });
 
         setPeople(mappedPeople);
 
@@ -105,7 +126,8 @@ const App: React.FC = () => {
     if (session?.user?.id === 'offline') return;
 
     try {
-      const { error } = await supabase.from('people').delete().eq('id', id);
+      // Removing from case_participants only (keeping global record)
+      const { error } = await supabase.from('case_participants').delete().eq('id', id);
       if (error) throw error;
     } catch (err) {
       console.error("Failed to delete person:", err);
@@ -183,7 +205,7 @@ const App: React.FC = () => {
                 onAddPerson={handleAddPerson} 
                 people={people}
                 onRemovePerson={handleRemovePerson}
-                caseData={caseData} // Passing caseData so SidebarForm can check/create case in DB
+                caseData={caseData} 
                 userId={session.user.id}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -208,6 +230,7 @@ const App: React.FC = () => {
       case 'PROMOCAO_ARQUIVAMENTO': return <ArchivingPromotionTool />;
       case 'ACTIVITIES': return <ActivityLogTool onOpenActivity={handleOpenActivity} userId={session.user.id} />;
       case 'MENTOR': return <MentorTool userId={session.user.id} />;
+      case 'CARGOS': return <CargosTool />;
 
       default:
         return (

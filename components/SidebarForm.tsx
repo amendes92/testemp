@@ -31,7 +31,6 @@ const SidebarForm: React.FC<SidebarFormProps> = ({ onAddPerson, people, onRemove
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ... (Validation Helpers: validateCPF, formatCPF, formatRG remain same) ...
   const validateCPF = (cpf: string) => {
     const strCPF = cpf.replace(/[^\d]+/g, '');
     if (strCPF === '') return true;
@@ -93,10 +92,17 @@ const SidebarForm: React.FC<SidebarFormProps> = ({ onAddPerson, people, onRemove
 
     setIsSaving(true);
     try {
-        // 1. Check or Create Case
+        // 1. Get Cargo ID from Master Cargos (if applicable)
+        let cargoId = null;
+        if (caseData.cargo) {
+           const { data: cargo, error: cargoError } = await supabase.from('master_cargos').select('id').eq('label', caseData.cargo).single();
+           if (cargo) cargoId = cargo.id;
+        }
+
+        // 2. Check or Create Case
         let caseId: string;
         
-        const { data: existingCase, error: searchError } = await supabase
+        const { data: existingCase } = await supabase
             .from('cases')
             .select('id')
             .eq('numero_processo', caseData.numeroProcesso)
@@ -110,9 +116,7 @@ const SidebarForm: React.FC<SidebarFormProps> = ({ onAddPerson, people, onRemove
                 .from('cases')
                 .insert([{
                     numero_processo: caseData.numeroProcesso,
-                    cargo_promotoria: caseData.cargo,
-                    promotor_responsavel: caseData.promotor,
-                    data_audiencia: caseData.dataAudiencia || null,
+                    cargo_id: cargoId,
                     created_by: userId
                 }])
                 .select()
@@ -122,53 +126,66 @@ const SidebarForm: React.FC<SidebarFormProps> = ({ onAddPerson, people, onRemove
             caseId = newCase.id;
         }
 
-        // 2. Insert Person
-        const personPayload = {
-            case_id: caseId,
-            nome: formData.nome,
-            folha: formData.folha,
-            nacionalidade: formData.nacionalidade,
-            cpf: formData.cpf,
-            rg: formData.rg,
-            pai: formData.pai,
-            mae: formData.mae,
-            data_nascimento: formData.dataNascimento || null
-        };
+        // 3. Upsert Global Person (Check if exists by CPF)
+        let personId: string;
+        
+        if (formData.cpf) {
+             const { data: existingPerson } = await supabase.from('global_people').select('id').eq('cpf', formData.cpf).single();
+             if (existingPerson) {
+                 personId = existingPerson.id;
+                 // Optionally update info
+             } else {
+                 const { data: newPerson, error: personError } = await supabase
+                    .from('global_people')
+                    .insert([{
+                        nome: formData.nome,
+                        cpf: formData.cpf,
+                        rg: formData.rg,
+                        nome_mae: formData.mae,
+                        data_nascimento: formData.dataNascimento || null
+                    }])
+                    .select()
+                    .single();
+                 if (personError) throw personError;
+                 personId = newPerson.id;
+             }
+        } else {
+             // If no CPF, force insert (or could check name/mae match)
+              const { data: newPerson, error: personError } = await supabase
+                    .from('global_people')
+                    .insert([{
+                        nome: formData.nome,
+                        rg: formData.rg,
+                        nome_mae: formData.mae,
+                        data_nascimento: formData.dataNascimento || null
+                    }])
+                    .select()
+                    .single();
+                 if (personError) throw personError;
+                 personId = newPerson.id;
+        }
 
-        const { data: newPerson, error: personError } = await supabase
-            .from('people')
-            .insert([personPayload])
+        // 4. Insert Case Participant
+        const { data: participant, error: partError } = await supabase
+            .from('case_participants')
+            .insert([{
+                case_id: caseId,
+                person_id: personId,
+                role: 'REU', // Default
+                is_preso: false
+            }])
             .select()
             .single();
 
-        if (personError) throw personError;
+        if (partError) throw partError;
 
-        // 3. Update UI
+        // 5. Update UI
         const uiPerson: Person = {
-            id: newPerson.id,
-            case_id: newPerson.case_id,
-            nome: newPerson.nome,
-            folha: newPerson.folha || '',
-            nacionalidade: newPerson.nacionalidade || '',
-            cpf: newPerson.cpf || '',
-            rg: newPerson.rg || '',
-            pai: newPerson.pai || '',
-            mae: newPerson.mae || '',
-            dataNascimento: newPerson.data_nascimento || ''
-        };
-
-        onAddPerson(uiPerson);
-        handleClear();
-
-    } catch (error: any) {
-        console.error("Error saving person:", error);
-        alert(`Erro de banco de dados. Salvando localmente.`);
-        // Fallback local save
-        const mockPerson: Person = {
-            id: Date.now().toString(),
-            case_id: 'local_fallback',
+            id: participant.id,
+            case_id: participant.case_id,
+            person_id: personId,
             nome: formData.nome,
-            folha: formData.folha,
+            folha: formData.folha, // Stored in UI only currently
             nacionalidade: formData.nacionalidade,
             cpf: formData.cpf,
             rg: formData.rg,
@@ -176,8 +193,13 @@ const SidebarForm: React.FC<SidebarFormProps> = ({ onAddPerson, people, onRemove
             mae: formData.mae,
             dataNascimento: formData.dataNascimento
         };
-        onAddPerson(mockPerson);
+
+        onAddPerson(uiPerson);
         handleClear();
+
+    } catch (error: any) {
+        console.error("Error saving person:", error);
+        alert(`Erro de banco de dados: ${error.message || 'Desconhecido'}.`);
     } finally {
         setIsSaving(false);
     }

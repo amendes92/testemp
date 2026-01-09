@@ -1,54 +1,83 @@
 
 export interface Person {
-  id: string;
-  case_id?: string; // Foreign key
+  id: string; // ID of the case_participant
+  case_id?: string;
+  person_id?: string; // ID of the global_person
   nome: string;
-  folha: string;
+  folha: string; // Note: Schema missing this column, UI only for now
   nacionalidade: string;
   cpf: string;
   rg: string;
   pai: string;
   mae: string;
-  dataNascimento: string; // Mapped from data_nascimento
-  // Internal mapping for UI consistency if needed, or we adapt UI to use snake_case
+  dataNascimento: string;
 }
 
-// Helper to map DB snake_case to UI camelCase
-export interface DbPerson {
+// DB Interfaces
+export interface DbGlobalPerson {
+  id: string;
+  nome: string;
+  cpf?: string;
+  rg?: string;
+  data_nascimento?: string;
+  nome_mae?: string;
+  endereco_completo?: string;
+}
+
+export interface DbCaseParticipant {
   id: string;
   case_id: string;
-  nome: string;
-  folha: string;
-  nacionalidade: string;
-  cpf: string;
-  rg: string;
-  pai: string;
-  mae: string;
-  data_nascimento: string;
-  endereco?: string;
-  contato?: string;
+  person_id: string;
+  role: string;
+  is_preso: boolean;
+  advogado_nome?: string;
+  // Join result
+  person?: DbGlobalPerson;
 }
 
 export interface CaseData {
   id?: string;
-  numeroProcesso: string; // Mapped to numero_processo
-  cargo: string; // Mapped to cargo_promotoria
-  promotor: string; // Mapped to promotor_responsavel
-  dataAudiencia: string; // Mapped to data_audiencia
+  numeroProcesso: string;
+  cargo: string;
+  promotor: string;
+  dataAudiencia: string;
 }
 
 export interface DbCase {
   id: string;
   numero_processo: string;
-  cargo_promotoria: string;
-  promotor_responsavel: string;
-  data_audiencia: string;
+  cargo_id?: number;
+  data_distribuicao?: string;
+  status?: string;
   created_by?: string;
+}
+
+// New DB Interfaces for Cargos and Promotores
+export interface DbMasterPromotor {
+  id: string; // uuid
+  nome: string;
+  sexo?: string; // 'M' or 'F'
+  email?: string;
+}
+
+export interface DbCargoAcumulacao {
+  id: number;
+  cargo_nome: string;
+  data_inicio?: string; // date
+  data_fim?: string; // date
+  eh_acumulacao: boolean;
+  promotor_titular_id?: string; // uuid
+  promotor_designado_id?: string; // uuid
+  created_at?: string;
+  
+  // Joins
+  promotor_titular?: DbMasterPromotor;
+  promotor_designado?: DbMasterPromotor;
 }
 
 export type Gender = 'M' | 'F';
 
-export type AppScreen = 'DASHBOARD' | 'PESQUISA_NI' | 'SISDIGITAL' | 'OFICIO' | 'ANPP' | 'MULTA_PENAL' | 'PROMOCAO_ARQUIVAMENTO' | 'ACTIVITIES' | 'MENTOR';
+export type AppScreen = 'DASHBOARD' | 'PESQUISA_NI' | 'SISDIGITAL' | 'OFICIO' | 'ANPP' | 'MULTA_PENAL' | 'PROMOCAO_ARQUIVAMENTO' | 'ACTIVITIES' | 'MENTOR' | 'CARGOS';
 
 interface Schedule {
   name: string;
@@ -77,29 +106,41 @@ export type ActivityStatus = typeof ACTIVITY_STATUSES[number]['value'];
 
 export interface Activity {
   id: string;
-  numeroProcesso: string; // Mapped from numero_processo_ref
+  numeroProcesso: string; 
   data: string; // YYYY-MM-DD
   status: ActivityStatus;
   tipo: string;
-  cargo: string; // Mapped from cargo_ref
-  promotor: string; // Mapped from promotor_ref
+  cargo: string; 
+  promotor: string; 
   observacao?: string;
   user_id?: string;
 }
 
-// DB Interface for Activities
+// DB Interface for Activities (Schema matches updated ActivityLogTool)
 export interface DbActivity {
   id: string;
   user_id: string;
-  case_id?: string;
-  numero_processo_ref: string;
   tipo: string;
-  data_atividade: string;
   status: string;
-  observacao: string;
+
+  // Fields matching ActivityLogTool usage
+  numero_processo_ref: string;
+  data_atividade: string;
   cargo_ref: string;
   promotor_ref: string;
-  created_at?: string;
+  observacao?: string;
+
+  // Optional older fields or joins
+  case_id?: string;
+  data_alvo?: string;
+  resumo_ia?: string;
+  sugestao_ia?: string;
+  case?: {
+    numero_processo: string;
+    cargo?: {
+      label: string;
+    }
+  };
 }
 
 export const ACTIVITY_TYPES = [
